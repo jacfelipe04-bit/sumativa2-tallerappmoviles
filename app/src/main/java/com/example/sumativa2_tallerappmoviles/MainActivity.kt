@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
             Sumativa2tallerappmovilesTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Greeting(
-                        name = "Grupo!",
+                        name = "mi primer cambio!",
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
