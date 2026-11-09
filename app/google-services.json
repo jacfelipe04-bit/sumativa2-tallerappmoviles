@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "386511933461",
+    "project_id": "carnetsanitario-ef323",
+    "storage_bucket": "carnetsanitario-ef323.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:386511933461:android:1e4eea902644cf94a6be1c",
+        "android_client_info": {
+          "package_name": "com.example.carnetsanitario"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBu5TRTw3EuZBcv1vwxQ0o9N9UZZbcDDXg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

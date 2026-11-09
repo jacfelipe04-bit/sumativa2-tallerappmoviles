@@ -1,0 +1,37 @@
+package com.example.carnetsanitario.data.local.dao
+
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
+import com.example.carnetsanitario.data.local.entity.MascotaEntity
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface MascotaDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertarMascota(mascota: MascotaEntity)
+
+    @Update
+    suspend fun actualizarMascota(mascota: MascotaEntity)
+
+    @Delete
+    suspend fun eliminarMascota(mascota: MascotaEntity)
+
+    // Mascotas activas del tutor (pantalla principal)
+    @Query("SELECT * FROM mascotas WHERE tutorId = :tutorId AND activa = 1 ORDER BY nombre ASC")
+    fun obtenerMascotasActivas(tutorId: String): Flow<List<MascotaEntity>>
+
+    // Mascotas archivadas/inactivas
+    @Query("SELECT * FROM mascotas WHERE tutorId = :tutorId AND activa = 0 ORDER BY nombre ASC")
+    fun obtenerMascotasInactivas(tutorId: String): Flow<List<MascotaEntity>>
+
+    // Detalle de una mascota específica
+    @Query("SELECT * FROM mascotas WHERE id = :mascotaId LIMIT 1")
+    fun obtenerMascotaPorId(mascotaId: String): Flow<MascotaEntity?>
+
+    @Query("SELECT * FROM mascotas WHERE tutorId = :tutorId")
+    suspend fun obtenerTodasPorTutorSync(tutorId: String): List<MascotaEntity>
+}
