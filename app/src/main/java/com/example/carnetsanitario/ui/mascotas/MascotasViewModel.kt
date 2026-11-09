@@ -109,6 +109,7 @@ class MascotasViewModel(
         pesoTexto: String,
         estadoReproductivo: EstadoReproductivo,
         numeroMicrochip: String?,
+        fotoUri: String?,
         onSuccess: () -> Unit
     ) {
         if (nombre.isBlank() || raza.isBlank() || color.isBlank() || fechaNacimiento.isBlank() || pesoTexto.isBlank()) {
@@ -137,7 +138,8 @@ class MascotasViewModel(
                 esEdadEstimada = esEdadEstimada,
                 peso = pesoDouble,
                 estadoReproductivo = estadoReproductivo,
-                numeroMicrochip = numeroMicrochip?.trim()?.takeIf { it.isNotEmpty() }
+                numeroMicrochip = numeroMicrochip?.trim()?.takeIf { it.isNotEmpty() },
+                fotoUri = fotoUri
             )
 
             repository.actualizarMascota(actualizada)

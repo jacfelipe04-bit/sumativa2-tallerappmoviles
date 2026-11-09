@@ -81,15 +81,11 @@ fun CarnetScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(54.dp)
-                                    .clip(CircleShape)
-                                    .background(if (m.especie == Especie.CANINO) CelestePrimario.copy(alpha = 0.2f) else RosaAcento.copy(alpha = 0.3f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(if (m.especie == Especie.CANINO) "🐶" else "🐱", fontSize = 26.sp)
-                            }
+                            com.example.carnetsanitario.ui.mascotas.MascotaAvatar(
+                                fotoUri = m.fotoUri,
+                                especie = m.especie,
+                                tamano = 56.dp
+                            )
                             Spacer(modifier = Modifier.width(14.dp))
                             Column {
                                 Text(m.nombre, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextoPrimario)
@@ -327,7 +323,7 @@ fun DialogoVacuna(
                 OutlinedTextField(
                     value = fechaAplicacion,
                     onValueChange = { fechaAplicacion = it },
-                    label = { Text("Fecha de aplicación * (dd/MM/yyyy)") },
+                    label = { Text("Fecha de aplicación * (dd/mm/yyyy)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -336,7 +332,7 @@ fun DialogoVacuna(
                 OutlinedTextField(
                     value = proximaDosis,
                     onValueChange = { proximaDosis = it },
-                    label = { Text("Próxima dosis (dd/MM/yyyy) (Opcional)") },
+                    label = { Text("Próxima dosis (dd/mm/yyyy) (Opcional)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -391,7 +387,7 @@ fun DialogoDesparasitacion(
                 OutlinedTextField(
                     value = fechaAplicacion,
                     onValueChange = { fechaAplicacion = it },
-                    label = { Text("Fecha de aplicación * (dd/MM/yyyy)") },
+                    label = { Text("Fecha de aplicación * (dd/mm/yyyy)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -400,7 +396,7 @@ fun DialogoDesparasitacion(
                 OutlinedTextField(
                     value = proximaDosis,
                     onValueChange = { proximaDosis = it },
-                    label = { Text("Próxima dosis (dd/MM/yyyy) (Opcional)") },
+                    label = { Text("Próxima dosis (dd/mm/yyyy) (Opcional)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )

@@ -1,12 +1,15 @@
 package com.example.carnetsanitario.ui.mascotas
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -14,8 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -27,6 +30,7 @@ import com.example.carnetsanitario.data.local.enums.Especie
 import com.example.carnetsanitario.data.local.enums.EstadoReproductivo
 import com.example.carnetsanitario.data.local.enums.Sexo
 import com.example.carnetsanitario.ui.theme.*
+import com.example.carnetsanitario.util.ImageUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,7 +147,7 @@ fun MascotasScreen(
         }
     }
 
-    // Modal Registrar Mascota
+    // Modal Registrar
     if (mostrarDialogoAgregar) {
         DialogoFormularioMascota(
             titulo = "Registrar Mascota",
@@ -153,9 +157,9 @@ fun MascotasScreen(
                 mostrarDialogoAgregar = false
                 viewModel.limpiarMensajes()
             },
-            onGuardar = { nombre, especie, sexo, raza, color, fechaNac, esEstimada, peso, repro, chip ->
+            onGuardar = { nombre, especie, sexo, raza, color, fechaNac, esEstimada, peso, repro, chip, fotoUri ->
                 viewModel.registrarMascota(
-                    nombre, especie, sexo, raza, color, fechaNac, esEstimada, peso, repro, chip, null
+                    nombre, especie, sexo, raza, color, fechaNac, esEstimada, peso, repro, chip, fotoUri
                 ) {
                     mostrarDialogoAgregar = false
                 }
@@ -163,7 +167,7 @@ fun MascotasScreen(
         )
     }
 
-    // Modal Editar Mascota
+    // Modal Editar
     mascotaAEditar?.let { mascota ->
         DialogoFormularioMascota(
             titulo = "Editar Mascota",
@@ -173,9 +177,9 @@ fun MascotasScreen(
                 mascotaAEditar = null
                 viewModel.limpiarMensajes()
             },
-            onGuardar = { nombre, _, sexo, raza, color, fechaNac, esEstimada, peso, repro, chip ->
+            onGuardar = { nombre, _, sexo, raza, color, fechaNac, esEstimada, peso, repro, chip, fotoUri ->
                 viewModel.actualizarMascota(
-                    mascota, nombre, sexo, raza, color, fechaNac, esEstimada, peso, repro, chip
+                    mascota, nombre, sexo, raza, color, fechaNac, esEstimada, peso, repro, chip, fotoUri
                 ) {
                     mascotaAEditar = null
                 }
@@ -183,7 +187,7 @@ fun MascotasScreen(
         )
     }
 
-    // Modal Editar Perfil Tutor
+    // Modal Tutor
     if (mostrarDialogoTutor && tutor != null) {
         DialogoEditarTutor(
             tutor = tutor!!,
@@ -219,15 +223,11 @@ fun TarjetaMascota(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(54.dp)
-                        .clip(CircleShape)
-                        .background(if (mascota.especie == Especie.CANINO) CelestePrimario.copy(alpha = 0.2f) else RosaAcento.copy(alpha = 0.3f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(if (mascota.especie == Especie.CANINO) "🐶" else "🐱", fontSize = 24.sp)
-                }
+                MascotaAvatar(
+                    fotoUri = mascota.fotoUri,
+                    especie = mascota.especie,
+                    tamano = 56.dp
+                )
 
                 Spacer(modifier = Modifier.width(14.dp))
 
@@ -244,7 +244,7 @@ fun TarjetaMascota(
             }
 
             Spacer(modifier = Modifier.height(10.dp))
-            Divider(color = BordeSuave)
+            HorizontalDivider(color = BordeSuave)
             Spacer(modifier = Modifier.height(4.dp))
 
             Row(
@@ -258,7 +258,6 @@ fun TarjetaMascota(
                 TextButton(onClick = onCambiarEstado) {
                     Text(if (mascota.activa) "Archivar" else "Reactivar", fontSize = 12.sp, color = TextoSecundario)
                 }
-                // Botón eliminar: SOLO visible si la mascota está archivada
                 if (!mascota.activa) {
                     TextButton(onClick = onEliminar) {
                         Text("Eliminar", fontSize = 12.sp, color = RosaOscuro, fontWeight = FontWeight.Bold)
@@ -286,9 +285,11 @@ fun DialogoFormularioMascota(
         esEstimada: Boolean,
         peso: String,
         reproductivo: EstadoReproductivo,
-        microchip: String?
+        microchip: String?,
+        fotoUri: String?
     ) -> Unit
 ) {
+    val context = LocalContext.current
     var nombre by remember { mutableStateOf(mascotaExistente?.nombre ?: "") }
     var especie by remember { mutableStateOf(mascotaExistente?.especie ?: Especie.CANINO) }
     var sexo by remember { mutableStateOf(mascotaExistente?.sexo ?: Sexo.MACHO) }
@@ -299,20 +300,61 @@ fun DialogoFormularioMascota(
     var peso by remember { mutableStateOf(mascotaExistente?.peso?.toString() ?: "") }
     var estadoReproductivo by remember { mutableStateOf(mascotaExistente?.estadoReproductivo ?: EstadoReproductivo.NO_SABE) }
     var microchip by remember { mutableStateOf(mascotaExistente?.numeroMicrochip ?: "") }
+    var fotoUriLocal by remember { mutableStateOf(mascotaExistente?.fotoUri) }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val rutaGuardada = ImageUtils.guardarImagenLocalmente(context, uri)
+            if (rutaGuardada != null) {
+                fotoUriLocal = rutaGuardada
+            }
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(20.dp),
             color = SuperficieTarjeta,
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.88f)
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.90f)
         ) {
             Column(
                 modifier = Modifier
                     .padding(20.dp)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(titulo, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextoPrimario)
                 Spacer(modifier = Modifier.height(14.dp))
+
+                // Selector de foto interactivo
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    MascotaAvatar(
+                        fotoUri = fotoUriLocal,
+                        especie = especie,
+                        tamano = 80.dp,
+                        onClick = {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (fotoUriLocal != null) "Toca la imagen para cambiarla" else "Toca para agregar foto",
+                        fontSize = 12.sp,
+                        color = CelesteOscuro,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.clickable {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
                     value = nombre,
@@ -324,8 +366,17 @@ fun DialogoFormularioMascota(
 
                 if (mascotaExistente == null) {
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text("Especie *", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextoSecundario)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Especie *",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextoSecundario,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         FilterChip(
                             selected = especie == Especie.CANINO,
                             onClick = { especie = Especie.CANINO },
@@ -340,8 +391,17 @@ fun DialogoFormularioMascota(
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
-                Text("Sexo *", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextoSecundario)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Sexo *",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextoSecundario,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     FilterChip(
                         selected = sexo == Sexo.MACHO,
                         onClick = { sexo = Sexo.MACHO },
@@ -376,14 +436,14 @@ fun DialogoFormularioMascota(
                 OutlinedTextField(
                     value = fechaNac,
                     onValueChange = { fechaNac = it },
-                    label = { Text("Fecha de nacimiento * (dd/MM/yyyy)") },
+                    label = { Text("Fecha de nacimiento * (dd/mm/yyyy)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { esEdadEstimada = !esEdadEstimada }
+                    modifier = Modifier.fillMaxWidth().clickable { esEdadEstimada = !esEdadEstimada }
                 ) {
                     Checkbox(checked = esEdadEstimada, onCheckedChange = { esEdadEstimada = it })
                     Text("Es fecha/edad estimada", fontSize = 13.sp, color = TextoPrimario)
@@ -400,8 +460,17 @@ fun DialogoFormularioMascota(
                 )
 
                 Spacer(modifier = Modifier.height(10.dp))
-                Text("Estado Reproductivo *", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextoSecundario)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Estado Reproductivo *",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextoSecundario,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     FilterChip(
                         selected = estadoReproductivo == EstadoReproductivo.CASTRADO,
                         onClick = { estadoReproductivo = EstadoReproductivo.CASTRADO },
@@ -429,7 +498,12 @@ fun DialogoFormularioMascota(
                 )
 
                 if (error != null) {
-                    Text(text = error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 8.dp).fillMaxWidth()
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -439,7 +513,7 @@ fun DialogoFormularioMascota(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            onGuardar(nombre, especie, sexo, raza, colorPelaje, fechaNac, esEdadEstimada, peso, estadoReproductivo, microchip)
+                            onGuardar(nombre, especie, sexo, raza, colorPelaje, fechaNac, esEdadEstimada, peso, estadoReproductivo, microchip, fotoUriLocal)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = CelesteOscuro)
                     ) {
