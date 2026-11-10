@@ -21,15 +21,17 @@ class CarnetRepository(
 ) {
 
     private var listenerMascotas: ListenerRegistration? = null
+    private var listenerTutor: ListenerRegistration? = null
+    private val listenersRegistros = mutableListOf<ListenerRegistration>()
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 
     // --- SINCRONIZACIÓN EN TIEMPO REAL (FIRESTORE -> ROOM) ---
 
     fun iniciarSincronizacionMascotas(tutorId: String, scope: CoroutineScope) {
-        listenerMascotas?.remove()
+        detenerSincronizacionMascotas()
 
         // 1. SINCRONIZAR TUTOR (Nube -> Room)
-        firestore.collection("tutores").document(tutorId)
+        listenerTutor = firestore.collection("tutores").document(tutorId)
             .addSnapshotListener { doc, error ->
                 if (error != null || doc == null || !doc.exists()) {
                     android.util.Log.e("CarnetSync", "Error o tutor no encontrado: ${error?.message}")
@@ -76,7 +78,6 @@ class CarnetRepository(
                         val id = doc.getString("id") ?: doc.id
                         val nombre = doc.getString("nombre") ?: return@mapNotNull null
 
-                        // Enums seguros
                         val especieStr = doc.getString("especie") ?: ""
                         val especie = try {
                             com.example.carnetsanitario.data.local.enums.Especie.valueOf(especieStr)
@@ -98,7 +99,6 @@ class CarnetRepository(
                             com.example.carnetsanitario.data.local.enums.EstadoReproductivo.entries.first()
                         }
 
-                        // Peso: en Firestore a veces se guarda como Long o Double
                         val peso = doc.getDouble("peso")
                             ?: doc.getLong("peso")?.toDouble()
                             ?: 0.0
@@ -119,7 +119,7 @@ class CarnetRepository(
                             peso = peso,
                             estadoReproductivo = estadoRep,
                             numeroMicrochip = doc.getString("numeroMicrochip"),
-                            fotoUri = doc.getString("fotoUri"),
+                            fotoUri = doc.getString("fotoUri"), // Admite tanto Path local como String Base64
                             activa = activa
                         )
                     } catch (e: Exception) {
@@ -135,6 +135,11 @@ class CarnetRepository(
                             val idsRemotos = mascotasRemotas.map { it.id }
                             db.mascotaDao().eliminarMascotasNoPresentes(tutorId, idsRemotos)
                             android.util.Log.d("CarnetSync", "Insertadas ${mascotasRemotas.size} mascotas en Room")
+
+                            // 3. SINCRONIZAR SUBCOLECCIONES DE CADA MASCOTA (Vacunas y Desparasitaciones)
+                            mascotasRemotas.forEach { mascota ->
+                                sincronizarRegistrosSanitarios(tutorId, mascota.id, scope)
+                            }
                         } else {
                             db.mascotaDao().eliminarTodasPorTutor(tutorId)
                         }
@@ -144,10 +149,78 @@ class CarnetRepository(
                 }
             }
     }
+    private fun sincronizarRegistrosSanitarios(tutorId: String, mascotaId: String, scope: CoroutineScope) {
+        val refMascota = firestore.collection("tutores")
+            .document(tutorId)
+            .collection("mascotas")
+            .document(mascotaId)
+
+        // Listener en tiempo real para Vacunas
+        val regVacunas = refMascota.collection("vacunas")
+            .addSnapshotListener { snap, err ->
+                if (err != null || snap == null) return@addSnapshotListener
+                val vacunas = snap.documents.mapNotNull { d ->
+                    try {
+                        val id = d.getString("id") ?: d.id
+                        val fechaAplicacion = d.getString("fechaAplicacion") ?: return@mapNotNull null
+                        val nombreVacuna = d.getString("nombreVacuna") ?: return@mapNotNull null
+                        val proximaDosis = d.getString("proximaDosis")
+
+                        VacunaEntity(
+                            id = id,
+                            mascotaId = d.getString("mascotaId") ?: mascotaId,
+                            fechaAplicacion = fechaAplicacion,
+                            nombreVacuna = nombreVacuna,
+                            proximaDosis = proximaDosis
+                        )
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                scope.launch {
+                    vacunas.forEach { db.vacunaDao().insertarVacuna(it) }
+                }
+            }
+        listenersRegistros.add(regVacunas)
+
+        // Listener en tiempo real para Desparasitaciones
+        val regDesp = refMascota.collection("desparasitaciones")
+            .addSnapshotListener { snap, err ->
+                if (err != null || snap == null) return@addSnapshotListener
+                val desparasitaciones = snap.documents.mapNotNull { d ->
+                    try {
+                        val id = d.getString("id") ?: d.id
+                        val fechaAplicacion = d.getString("fechaAplicacion") ?: return@mapNotNull null
+                        val nombreAntiparasitario = d.getString("nombreAntiparasitario") ?: return@mapNotNull null
+                        val proximaDosis = d.getString("proximaDosis")
+
+                        DesparasitacionEntity(
+                            id = id,
+                            mascotaId = d.getString("mascotaId") ?: mascotaId,
+                            fechaAplicacion = fechaAplicacion,
+                            nombreAntiparasitario = nombreAntiparasitario,
+                            proximaDosis = proximaDosis
+                        )
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                scope.launch {
+                    desparasitaciones.forEach { db.desparasitacionDao().insertarDesparasitacion(it) }
+                }
+            }
+        listenersRegistros.add(regDesp)
+    }
 
     fun detenerSincronizacionMascotas() {
+        listenerTutor?.remove()
+        listenerTutor = null
+
         listenerMascotas?.remove()
         listenerMascotas = null
+
+        listenersRegistros.forEach { it.remove() }
+        listenersRegistros.clear()
     }
 
     // --- GESTIÓN DE TUTOR ---
