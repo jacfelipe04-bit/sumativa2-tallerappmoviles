@@ -1,5 +1,6 @@
 package com.example.carnetsanitario.ui.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,11 +12,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.carnetsanitario.R
 import com.example.carnetsanitario.ui.theme.*
 
 @Composable
@@ -54,6 +57,14 @@ fun AuthScreen(
                 .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Imagen/logo centrado arriba del título
+            Image(
+                painter = painterResource(id = R.drawable.ic_logo_app), // Reemplaza ic_logo_app por el nombre exacto de tu archivo en res/drawable
+                contentDescription = "Logo Carnet Sanitario",
+                modifier = Modifier
+                    .size(100.dp)
+                    .padding(bottom = 12.dp)
+            )
             Text(
                 text = "Carnet Sanitario",
                 fontSize = 28.sp,
