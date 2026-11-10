@@ -1,5 +1,6 @@
 package com.example.carnetsanitario.ui.mascotas
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.carnetsanitario.data.local.entity.MascotaEntity
@@ -8,6 +9,7 @@ import com.example.carnetsanitario.data.local.enums.Especie
 import com.example.carnetsanitario.data.local.enums.EstadoReproductivo
 import com.example.carnetsanitario.data.local.enums.Sexo
 import com.example.carnetsanitario.data.repository.CarnetRepository
+import com.example.carnetsanitario.ui.util.ImageUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -49,6 +51,7 @@ class MascotasViewModel(
     }
 
     fun registrarMascota(
+        context: Context,
         nombre: String,
         especie: Especie,
         sexo: Sexo,
@@ -79,6 +82,9 @@ class MascotasViewModel(
                 return@launch
             }
 
+            // Convertir la foto a Base64 para persistirla en Firestore
+            val fotoPersistible = ImageUtils.uriABase64(context, fotoUri)
+
             val nuevaMascota = MascotaEntity(
                 id = UUID.randomUUID().toString(),
                 tutorId = tutorId,
@@ -92,7 +98,7 @@ class MascotasViewModel(
                 peso = pesoDouble,
                 estadoReproductivo = estadoReproductivo,
                 numeroMicrochip = numeroMicrochip?.trim()?.takeIf { it.isNotEmpty() },
-                fotoUri = fotoUri,
+                fotoUri = fotoPersistible,
                 activa = true
             )
 
@@ -104,6 +110,7 @@ class MascotasViewModel(
     }
 
     fun actualizarMascota(
+        context: Context,
         mascotaOriginal: MascotaEntity,
         nombre: String,
         sexo: Sexo,
@@ -134,6 +141,13 @@ class MascotasViewModel(
                 return@launch
             }
 
+            // Si cambió la foto, procesar a Base64; de lo contrario, mantener la que ya tenía
+            val fotoPersistible = if (fotoUri != mascotaOriginal.fotoUri) {
+                ImageUtils.uriABase64(context, fotoUri)
+            } else {
+                mascotaOriginal.fotoUri
+            }
+
             val actualizada = mascotaOriginal.copy(
                 nombre = nombre.trim(),
                 sexo = sexo,
@@ -144,7 +158,7 @@ class MascotasViewModel(
                 peso = pesoDouble,
                 estadoReproductivo = estadoReproductivo,
                 numeroMicrochip = numeroMicrochip?.trim()?.takeIf { it.isNotEmpty() },
-                fotoUri = fotoUri
+                fotoUri = fotoPersistible
             )
 
             repository.actualizarMascota(actualizada)
@@ -161,7 +175,7 @@ class MascotasViewModel(
     }
 
     fun eliminarMascotaDefinitiva(mascota: MascotaEntity) {
-        if (mascota.activa) return // Regla: Solo si ya está archivada
+        if (mascota.activa) return
         viewModelScope.launch {
             repository.eliminarMascota(mascota)
             _mensajeExito.value = "${mascota.nombre} fue eliminada definitivamente"

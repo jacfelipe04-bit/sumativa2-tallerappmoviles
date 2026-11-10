@@ -4,7 +4,6 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,7 +29,6 @@ import com.example.carnetsanitario.data.local.enums.Especie
 import com.example.carnetsanitario.data.local.enums.EstadoReproductivo
 import com.example.carnetsanitario.data.local.enums.Sexo
 import com.example.carnetsanitario.ui.theme.*
-import com.example.carnetsanitario.util.ImageUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,6 +37,7 @@ fun MascotasScreen(
     onMascotaClick: (String) -> Unit,
     onCerrarSesion: () -> Unit
 ) {
+    val context = LocalContext.current
     val mascotas by viewModel.listaMascotas.collectAsState()
     val soloActivas by viewModel.mostrarSoloActivas.collectAsState()
     val mensajeError by viewModel.mensajeError.collectAsState()
@@ -159,7 +158,18 @@ fun MascotasScreen(
             },
             onGuardar = { nombre, especie, sexo, raza, color, fechaNac, esEstimada, peso, repro, chip, fotoUri ->
                 viewModel.registrarMascota(
-                    nombre, especie, sexo, raza, color, fechaNac, esEstimada, peso, repro, chip, fotoUri
+                    context = context,
+                    nombre = nombre,
+                    especie = especie,
+                    sexo = sexo,
+                    raza = raza,
+                    color = color,
+                    fechaNacimiento = fechaNac,
+                    esEdadEstimada = esEstimada,
+                    pesoTexto = peso,
+                    estadoReproductivo = repro,
+                    numeroMicrochip = chip,
+                    fotoUri = fotoUri
                 ) {
                     mostrarDialogoAgregar = false
                 }
@@ -179,7 +189,18 @@ fun MascotasScreen(
             },
             onGuardar = { nombre, _, sexo, raza, color, fechaNac, esEstimada, peso, repro, chip, fotoUri ->
                 viewModel.actualizarMascota(
-                    mascota, nombre, sexo, raza, color, fechaNac, esEstimada, peso, repro, chip, fotoUri
+                    context = context,
+                    mascotaOriginal = mascota,
+                    nombre = nombre,
+                    sexo = sexo,
+                    raza = raza,
+                    color = color,
+                    fechaNacimiento = fechaNac,
+                    esEdadEstimada = esEstimada,
+                    pesoTexto = peso,
+                    estadoReproductivo = repro,
+                    numeroMicrochip = chip,
+                    fotoUri = fotoUri
                 ) {
                     mascotaAEditar = null
                 }
@@ -289,7 +310,6 @@ fun DialogoFormularioMascota(
         fotoUri: String?
     ) -> Unit
 ) {
-    val context = LocalContext.current
     var nombre by remember { mutableStateOf(mascotaExistente?.nombre ?: "") }
     var especie by remember { mutableStateOf(mascotaExistente?.especie ?: Especie.CANINO) }
     var sexo by remember { mutableStateOf(mascotaExistente?.sexo ?: Sexo.MACHO) }
@@ -306,10 +326,7 @@ fun DialogoFormularioMascota(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) {
-            val rutaGuardada = ImageUtils.guardarImagenLocalmente(context, uri)
-            if (rutaGuardada != null) {
-                fotoUriLocal = rutaGuardada
-            }
+            fotoUriLocal = uri.toString()
         }
     }
 
@@ -513,7 +530,19 @@ fun DialogoFormularioMascota(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            onGuardar(nombre, especie, sexo, raza, colorPelaje, fechaNac, esEdadEstimada, peso, estadoReproductivo, microchip, fotoUriLocal)
+                            onGuardar(
+                                nombre,
+                                especie,
+                                sexo,
+                                raza,
+                                colorPelaje,
+                                fechaNac,
+                                esEdadEstimada,
+                                peso,
+                                estadoReproductivo,
+                                microchip,
+                                fotoUriLocal
+                            )
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = CelesteOscuro)
                     ) {
