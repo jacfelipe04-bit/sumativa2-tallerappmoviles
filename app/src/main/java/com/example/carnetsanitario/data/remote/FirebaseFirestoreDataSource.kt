@@ -5,6 +5,7 @@ import com.example.carnetsanitario.data.local.entity.MascotaEntity
 import com.example.carnetsanitario.data.local.entity.TutorEntity
 import com.example.carnetsanitario.data.local.entity.VacunaEntity
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 
 class FirebaseFirestoreDataSource(
@@ -15,7 +16,7 @@ class FirebaseFirestoreDataSource(
     suspend fun guardarTutor(tutor: TutorEntity) {
         firestore.collection("tutores")
             .document(tutor.id)
-            .set(tutor)
+            .set(tutor, SetOptions.merge()) // Agrega SetOptions.merge()
             .await()
     }
 

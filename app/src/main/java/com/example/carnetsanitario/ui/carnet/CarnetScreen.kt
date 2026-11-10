@@ -31,6 +31,7 @@ fun CarnetScreen(
     val mascota by viewModel.mascota.collectAsState()
     val vacunas by viewModel.vacunas.collectAsState()
     val desparasitaciones by viewModel.desparasitaciones.collectAsState()
+    val mensajeError by viewModel.mensajeError.collectAsState()
 
     var pestanaSeleccionada by remember { mutableIntStateOf(0) }
     var mostrarDialogoVacuna by remember { mutableStateOf(false) }
@@ -209,7 +210,8 @@ fun CarnetScreen(
             titulo = "Registrar Vacuna",
             especie = mascota!!.especie,
             vacunaExistente = null,
-            onDismiss = { mostrarDialogoVacuna = false },
+            error = mensajeError,
+            onDismiss = { mostrarDialogoVacuna = false; viewModel.limpiarError() },
             onGuardar = { nom, fec, prox ->
                 viewModel.registrarVacuna(nom, fec, prox) { mostrarDialogoVacuna = false }
             }
@@ -222,10 +224,10 @@ fun CarnetScreen(
             titulo = "Editar Vacuna",
             especie = mascota?.especie ?: Especie.CANINO,
             vacunaExistente = v,
-            onDismiss = { vacunaAEditar = null },
+            error = mensajeError,
+            onDismiss = { vacunaAEditar = null; viewModel.limpiarError() },
             onGuardar = { nom, fec, prox ->
-                viewModel.editarVacuna(v.copy(nombreVacuna = nom, fechaAplicacion = fec, proximaDosis = prox))
-                vacunaAEditar = null
+                viewModel.editarVacuna(v, nom, fec, prox) { vacunaAEditar = null }
             }
         )
     }
@@ -235,7 +237,8 @@ fun CarnetScreen(
         DialogoDesparasitacion(
             titulo = "Registrar Desparasitación",
             desparasitacionExistente = null,
-            onDismiss = { mostrarDialogoDesparasitacion = false },
+            error = mensajeError,
+            onDismiss = { mostrarDialogoDesparasitacion = false; viewModel.limpiarError() },
             onGuardar = { prod, fec, prox ->
                 viewModel.registrarDesparasitacion(prod, fec, prox) { mostrarDialogoDesparasitacion = false }
             }
@@ -247,10 +250,10 @@ fun CarnetScreen(
         DialogoDesparasitacion(
             titulo = "Editar Desparasitación",
             desparasitacionExistente = d,
-            onDismiss = { desparasitacionAEditar = null },
+            error = mensajeError,
+            onDismiss = { desparasitacionAEditar = null; viewModel.limpiarError() },
             onGuardar = { prod, fec, prox ->
-                viewModel.editarDesparasitacion(d.copy(nombreAntiparasitario = prod, fechaAplicacion = fec, proximaDosis = prox))
-                desparasitacionAEditar = null
+                viewModel.editarDesparasitacion(d, prod, fec, prox) { desparasitacionAEditar = null }
             }
         )
     }
@@ -262,6 +265,7 @@ fun DialogoVacuna(
     titulo: String,
     especie: Especie,
     vacunaExistente: VacunaEntity?,
+    error: String? = null,
     onDismiss: () -> Unit,
     onGuardar: (nombre: String, fecha: String, proxima: String?) -> Unit
 ) {
@@ -337,6 +341,15 @@ fun DialogoVacuna(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                if (error != null) {
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 10.dp)
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(18.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("Cancelar") }
@@ -344,9 +357,7 @@ fun DialogoVacuna(
                     Button(
                         onClick = {
                             val nombreFinal = if (vacunaSeleccionada == TipoVacuna.OTRA) nombrePersonalizado else vacunaSeleccionada.nombreLegible
-                            if (nombreFinal.isNotBlank() && fechaAplicacion.isNotBlank()) {
-                                onGuardar(nombreFinal, fechaAplicacion, proximaDosis.takeIf { it.isNotBlank() })
-                            }
+                            onGuardar(nombreFinal, fechaAplicacion, proximaDosis.takeIf { it.isNotBlank() })
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = CelesteOscuro)
                     ) {
@@ -362,6 +373,7 @@ fun DialogoVacuna(
 fun DialogoDesparasitacion(
     titulo: String,
     desparasitacionExistente: DesparasitacionEntity?,
+    error: String? = null,
     onDismiss: () -> Unit,
     onGuardar: (producto: String, fecha: String, proxima: String?) -> Unit
 ) {
@@ -401,15 +413,22 @@ fun DialogoDesparasitacion(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                if (error != null) {
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 10.dp)
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(18.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("Cancelar") }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            if (producto.isNotBlank() && fechaAplicacion.isNotBlank()) {
-                                onGuardar(producto, fechaAplicacion, proximaDosis.takeIf { it.isNotBlank() })
-                            }
+                            onGuardar(producto, fechaAplicacion, proximaDosis.takeIf { it.isNotBlank() })
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = CelesteOscuro)
                     ) {

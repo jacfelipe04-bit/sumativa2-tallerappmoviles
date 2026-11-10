@@ -1,7 +1,6 @@
 package com.example.carnetsanitario.data.local.entity
 
 import androidx.room.Entity
-import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.carnetsanitario.data.local.enums.Especie
@@ -10,14 +9,6 @@ import com.example.carnetsanitario.data.local.enums.Sexo
 
 @Entity(
     tableName = "mascotas",
-    foreignKeys = [
-        ForeignKey(
-            entity = TutorEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["tutorId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
     indices = [Index(value = ["tutorId"])]
 )
 data class MascotaEntity(

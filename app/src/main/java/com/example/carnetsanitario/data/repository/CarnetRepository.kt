@@ -23,6 +23,7 @@ class CarnetRepository(
     private var listenerMascotas: ListenerRegistration? = null
     private var listenerTutor: ListenerRegistration? = null
     private val listenersRegistros = mutableListOf<ListenerRegistration>()
+    private val mascotasConListener = mutableSetOf<String>()
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 
     // --- SINCRONIZACIÓN EN TIEMPO REAL (FIRESTORE -> ROOM) ---
@@ -150,6 +151,8 @@ class CarnetRepository(
             }
     }
     private fun sincronizarRegistrosSanitarios(tutorId: String, mascotaId: String, scope: CoroutineScope) {
+        if (!mascotasConListener.add(mascotaId)) return
+
         val refMascota = firestore.collection("tutores")
             .document(tutorId)
             .collection("mascotas")
@@ -221,6 +224,7 @@ class CarnetRepository(
 
         listenersRegistros.forEach { it.remove() }
         listenersRegistros.clear()
+        mascotasConListener.clear()
     }
 
     // --- GESTIÓN DE TUTOR ---

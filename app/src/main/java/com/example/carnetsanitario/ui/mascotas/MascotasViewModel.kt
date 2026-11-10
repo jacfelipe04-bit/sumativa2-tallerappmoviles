@@ -10,6 +10,7 @@ import com.example.carnetsanitario.data.local.enums.EstadoReproductivo
 import com.example.carnetsanitario.data.local.enums.Sexo
 import com.example.carnetsanitario.data.repository.CarnetRepository
 import com.example.carnetsanitario.ui.util.ImageUtils
+import com.example.carnetsanitario.ui.util.ValidacionesUtil
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -65,16 +66,27 @@ class MascotasViewModel(
         fotoUri: String?,
         onSuccess: () -> Unit
     ) {
-        if (nombre.isBlank() || raza.isBlank() || color.isBlank() || fechaNacimiento.isBlank() || pesoTexto.isBlank()) {
-            _mensajeError.value = "Por favor completa todos los campos requeridos (*)"
-            return
-        }
+        // 1. Validar textos
+        val (nombreOk, errorNombre) = ValidacionesUtil.validarTextoRequerido(nombre, "Nombre de la mascota")
+        if (!nombreOk) { _mensajeError.value = errorNombre; return }
 
-        val pesoDouble = pesoTexto.toDoubleOrNull()
-        if (pesoDouble == null || pesoDouble <= 0.0) {
-            _mensajeError.value = "Ingresa un peso válido en kg (mayor a 0)"
-            return
-        }
+        val (razaOk, errorRaza) = ValidacionesUtil.validarTextoRequerido(raza, "Raza")
+        if (!razaOk) { _mensajeError.value = errorRaza; return }
+
+        val (colorOk, errorColor) = ValidacionesUtil.validarTextoRequerido(color, "Color")
+        if (!colorOk) { _mensajeError.value = errorColor; return }
+
+        // 2. Validar fecha
+        val (fechaOk, errorFecha) = ValidacionesUtil.validarFechaNacimiento(fechaNacimiento)
+        if (!fechaOk) { _mensajeError.value = errorFecha; return }
+
+        // 3. Validar peso
+        val (pesoValido, errorPeso) = ValidacionesUtil.parsearYValidarPeso(pesoTexto)
+        if (pesoValido == null) { _mensajeError.value = errorPeso; return }
+
+        // 4. Validar microchip
+        val (chipOk, errorChip) = ValidacionesUtil.validarMicrochip(numeroMicrochip)
+        if (!chipOk) { _mensajeError.value = errorChip; return }
 
         viewModelScope.launch {
             if (repository.verificarNombreExistente(tutorId, nombre)) {
@@ -82,7 +94,6 @@ class MascotasViewModel(
                 return@launch
             }
 
-            // Convertir la foto a Base64 para persistirla en Firestore
             val fotoPersistible = ImageUtils.uriABase64(context, fotoUri)
 
             val nuevaMascota = MascotaEntity(
@@ -95,7 +106,7 @@ class MascotasViewModel(
                 color = color.trim(),
                 fechaNacimiento = fechaNacimiento.trim(),
                 esEdadEstimada = esEdadEstimada,
-                peso = pesoDouble,
+                peso = pesoValido,
                 estadoReproductivo = estadoReproductivo,
                 numeroMicrochip = numeroMicrochip?.trim()?.takeIf { it.isNotEmpty() },
                 fotoUri = fotoPersistible,
@@ -124,16 +135,23 @@ class MascotasViewModel(
         fotoUri: String?,
         onSuccess: () -> Unit
     ) {
-        if (nombre.isBlank() || raza.isBlank() || color.isBlank() || fechaNacimiento.isBlank() || pesoTexto.isBlank()) {
-            _mensajeError.value = "Completa todos los campos obligatorios"
-            return
-        }
+        val (nombreOk, errorNombre) = ValidacionesUtil.validarTextoRequerido(nombre, "Nombre de la mascota")
+        if (!nombreOk) { _mensajeError.value = errorNombre; return }
 
-        val pesoDouble = pesoTexto.toDoubleOrNull()
-        if (pesoDouble == null || pesoDouble <= 0.0) {
-            _mensajeError.value = "Ingresa un peso válido en kg"
-            return
-        }
+        val (razaOk, errorRaza) = ValidacionesUtil.validarTextoRequerido(raza, "Raza")
+        if (!razaOk) { _mensajeError.value = errorRaza; return }
+
+        val (colorOk, errorColor) = ValidacionesUtil.validarTextoRequerido(color, "Color")
+        if (!colorOk) { _mensajeError.value = errorColor; return }
+
+        val (fechaOk, errorFecha) = ValidacionesUtil.validarFechaNacimiento(fechaNacimiento)
+        if (!fechaOk) { _mensajeError.value = errorFecha; return }
+
+        val (pesoValido, errorPeso) = ValidacionesUtil.parsearYValidarPeso(pesoTexto)
+        if (pesoValido == null) { _mensajeError.value = errorPeso; return }
+
+        val (chipOk, errorChip) = ValidacionesUtil.validarMicrochip(numeroMicrochip)
+        if (!chipOk) { _mensajeError.value = errorChip; return }
 
         viewModelScope.launch {
             if (repository.verificarNombreExistente(tutorId, nombre, mascotaOriginal.id)) {
@@ -141,7 +159,6 @@ class MascotasViewModel(
                 return@launch
             }
 
-            // Si cambió la foto, procesar a Base64; de lo contrario, mantener la que ya tenía
             val fotoPersistible = if (fotoUri != mascotaOriginal.fotoUri) {
                 ImageUtils.uriABase64(context, fotoUri)
             } else {
@@ -155,7 +172,7 @@ class MascotasViewModel(
                 color = color.trim(),
                 fechaNacimiento = fechaNacimiento.trim(),
                 esEdadEstimada = esEdadEstimada,
-                peso = pesoDouble,
+                peso = pesoValido,
                 estadoReproductivo = estadoReproductivo,
                 numeroMicrochip = numeroMicrochip?.trim()?.takeIf { it.isNotEmpty() },
                 fotoUri = fotoPersistible
@@ -197,6 +214,18 @@ class MascotasViewModel(
             _mensajeError.value = "Completa los campos obligatorios del tutor"
             return
         }
+
+        val (nombreOk, errorNombre) = ValidacionesUtil.validarNombreOApellido(nombre, "El nombre")
+        if (!nombreOk) { _mensajeError.value = errorNombre; return }
+
+        val (apellidoOk, errorApellido) = ValidacionesUtil.validarNombreOApellido(apellido, "El apellido")
+        if (!apellidoOk) { _mensajeError.value = errorApellido; return }
+
+        val (rutOk, errorRut) = ValidacionesUtil.validarRutChileno(rut)
+        if (!rutOk) { _mensajeError.value = errorRut; return }
+
+        val (telOk, errorTel) = ValidacionesUtil.validarTelefonoChileno(telefono)
+        if (!telOk) { _mensajeError.value = errorTel; return }
 
         viewModelScope.launch {
             val tutorModificado = actual.copy(

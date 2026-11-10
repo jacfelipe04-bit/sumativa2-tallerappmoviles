@@ -1,16 +1,15 @@
 package com.example.carnetsanitario.data.local.dao
 
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import com.example.carnetsanitario.data.local.entity.TutorEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TutorDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertarOActualizar(tutor: TutorEntity)
 
     @Update

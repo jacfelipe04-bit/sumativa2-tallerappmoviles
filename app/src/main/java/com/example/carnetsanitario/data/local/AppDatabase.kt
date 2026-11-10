@@ -21,7 +21,7 @@ import com.example.carnetsanitario.data.local.entity.VacunaEntity
         VacunaEntity::class,
         DesparasitacionEntity::class
     ],
-    version = 2, // Subir de 1 a 2
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
