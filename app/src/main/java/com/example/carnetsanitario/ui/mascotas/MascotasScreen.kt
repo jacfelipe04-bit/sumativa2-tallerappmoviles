@@ -29,6 +29,7 @@ import com.example.carnetsanitario.data.local.enums.Especie
 import com.example.carnetsanitario.data.local.enums.EstadoReproductivo
 import com.example.carnetsanitario.data.local.enums.Sexo
 import com.example.carnetsanitario.ui.theme.*
+import com.example.carnetsanitario.ui.util.verticalScrollbar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -330,61 +331,102 @@ fun DialogoFormularioMascota(
         }
     }
 
+    val scrollState = rememberScrollState()
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(20.dp),
             color = SuperficieTarjeta,
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.90f)
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.88f)
         ) {
             Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier.fillMaxSize()
             ) {
-                Text(titulo, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextoPrimario)
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Selector de foto interactivo
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    MascotaAvatar(
-                        fotoUri = fotoUriLocal,
-                        especie = especie,
-                        tamano = 80.dp,
-                        onClick = {
-                            photoPickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (fotoUriLocal != null) "Toca la imagen para cambiarla" else "Toca para agregar foto",
-                        fontSize = 12.sp,
-                        color = CelesteOscuro,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.clickable {
-                            photoPickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = nombre,
-                    onValueChange = { nombre = it },
-                    label = { Text("Nombre de la mascota *") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                // 1. Cabecera fija
+                Text(
+                    text = titulo,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextoPrimario,
+                    modifier = Modifier.padding(top = 20.dp, start = 20.dp, end = 20.dp, bottom = 8.dp)
                 )
 
-                if (mascotaExistente == null) {
+                // 2. Formulario con barra lateral visible y scroll independiente
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScrollbar(state = scrollState, color = CelesteOscuro.copy(alpha = 0.55f))
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Selector de foto interactivo
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        MascotaAvatar(
+                            fotoUri = fotoUriLocal,
+                            especie = especie,
+                            tamano = 80.dp,
+                            onClick = {
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (fotoUriLocal != null) "Toca la imagen para cambiarla" else "Toca para agregar foto",
+                            fontSize = 12.sp,
+                            color = CelesteOscuro,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.clickable {
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    OutlinedTextField(
+                        value = nombre,
+                        onValueChange = { nombre = it },
+                        label = { Text("Nombre de la mascota *") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (mascotaExistente == null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Especie *",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextoSecundario,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = especie == Especie.CANINO,
+                                onClick = { especie = Especie.CANINO },
+                                label = { Text("Canino 🐶") }
+                            )
+                            FilterChip(
+                                selected = especie == Especie.FELINO,
+                                onClick = { especie = Especie.FELINO },
+                                label = { Text("Felino 🐱") }
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = "Especie *",
+                        text = "Sexo *",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color = TextoSecundario,
@@ -395,139 +437,129 @@ fun DialogoFormularioMascota(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         FilterChip(
-                            selected = especie == Especie.CANINO,
-                            onClick = { especie = Especie.CANINO },
-                            label = { Text("Canino 🐶") }
+                            selected = sexo == Sexo.MACHO,
+                            onClick = { sexo = Sexo.MACHO },
+                            label = { Text("Macho") }
                         )
                         FilterChip(
-                            selected = especie == Especie.FELINO,
-                            onClick = { especie = Especie.FELINO },
-                            label = { Text("Felino 🐱") }
+                            selected = sexo == Sexo.HEMBRA,
+                            onClick = { sexo = Sexo.HEMBRA },
+                            label = { Text("Hembra") }
                         )
                     }
-                }
 
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = "Sexo *",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextoSecundario,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = sexo == Sexo.MACHO,
-                        onClick = { sexo = Sexo.MACHO },
-                        label = { Text("Macho") }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = raza,
+                        onValueChange = { raza = it },
+                        label = { Text("Raza *") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    FilterChip(
-                        selected = sexo == Sexo.HEMBRA,
-                        onClick = { sexo = Sexo.HEMBRA },
-                        label = { Text("Hembra") }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = colorPelaje,
+                        onValueChange = { colorPelaje = it },
+                        label = { Text("Color *") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                }
 
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = raza,
-                    onValueChange = { raza = it },
-                    label = { Text("Raza *") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = colorPelaje,
-                    onValueChange = { colorPelaje = it },
-                    label = { Text("Color *") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = fechaNac,
-                    onValueChange = { fechaNac = it },
-                    label = { Text("Fecha de nacimiento * (dd/mm/yyyy)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().clickable { esEdadEstimada = !esEdadEstimada }
-                ) {
-                    Checkbox(checked = esEdadEstimada, onCheckedChange = { esEdadEstimada = it })
-                    Text("Es fecha/edad estimada", fontSize = 13.sp, color = TextoPrimario)
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = peso,
-                    onValueChange = { peso = it },
-                    label = { Text("Peso en kg * (ej: 4.5)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = "Estado Reproductivo *",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextoSecundario,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    FilterChip(
-                        selected = estadoReproductivo == EstadoReproductivo.CASTRADO,
-                        onClick = { estadoReproductivo = EstadoReproductivo.CASTRADO },
-                        label = { Text("Castrado") }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = fechaNac,
+                        onValueChange = { fechaNac = it },
+                        label = { Text("Fecha de nacimiento * (dd/mm/yyyy)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    FilterChip(
-                        selected = estadoReproductivo == EstadoReproductivo.ENTERO,
-                        onClick = { estadoReproductivo = EstadoReproductivo.ENTERO },
-                        label = { Text("Entero") }
-                    )
-                    FilterChip(
-                        selected = estadoReproductivo == EstadoReproductivo.NO_SABE,
-                        onClick = { estadoReproductivo = EstadoReproductivo.NO_SABE },
-                        label = { Text("No sabe") }
-                    )
-                }
 
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = microchip,
-                    onValueChange = { microchip = it },
-                    label = { Text("N° Microchip (Opcional)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { esEdadEstimada = !esEdadEstimada }
+                    ) {
+                        Checkbox(checked = esEdadEstimada, onCheckedChange = { esEdadEstimada = it })
+                        Text("Es fecha/edad estimada", fontSize = 13.sp, color = TextoPrimario)
+                    }
 
-                if (error != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = peso,
+                        onValueChange = { peso = it },
+                        label = { Text("Peso en kg * (ej: 4.5)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = error,
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 8.dp).fillMaxWidth()
+                        text = "Estado Reproductivo *",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextoSecundario,
+                        modifier = Modifier.fillMaxWidth()
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        FilterChip(
+                            selected = estadoReproductivo == EstadoReproductivo.CASTRADO,
+                            onClick = { estadoReproductivo = EstadoReproductivo.CASTRADO },
+                            label = { Text("Castrado") }
+                        )
+                        FilterChip(
+                            selected = estadoReproductivo == EstadoReproductivo.ENTERO,
+                            onClick = { estadoReproductivo = EstadoReproductivo.ENTERO },
+                            label = { Text("Entero") }
+                        )
+                        FilterChip(
+                            selected = estadoReproductivo == EstadoReproductivo.NO_SABE,
+                            onClick = { estadoReproductivo = EstadoReproductivo.NO_SABE },
+                            label = { Text("No sabe") }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = microchip,
+                        onValueChange = { microchip = it },
+                        label = { Text("N° Microchip (Opcional)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (error != null) {
+                        Text(
+                            text = error,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp,
+                            modifier = Modifier
+                                .padding(top = 10.dp)
+                                .fillMaxWidth()
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancelar") }
-                    Spacer(modifier = Modifier.width(8.dp))
+                // 3. Barra inferior de botones fija
+                HorizontalDivider(color = BordeSuave)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancelar", color = TextoSecundario)
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
                     Button(
                         onClick = {
                             onGuardar(
@@ -544,9 +576,10 @@ fun DialogoFormularioMascota(
                                 fotoUriLocal
                             )
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = CelesteOscuro)
+                        colors = ButtonDefaults.buttonColors(containerColor = CelesteOscuro),
+                        shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text("Guardar")
+                        Text(if (mascotaExistente == null) "Registrar" else "Guardar Cambios")
                     }
                 }
             }
