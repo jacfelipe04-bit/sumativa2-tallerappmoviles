@@ -69,7 +69,7 @@ fun AuthScreen(
                 color = TextoPrimario
             )
             Text(
-                text = "Cuidado y registro médico de tus mascotas",
+                text = "El carnet de tu mascota, a salvo y siempre a mano",
                 fontSize = 14.sp,
                 color = TextoSecundario,
                 modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
