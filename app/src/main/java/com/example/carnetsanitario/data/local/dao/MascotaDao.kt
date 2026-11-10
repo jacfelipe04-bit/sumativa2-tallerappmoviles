@@ -11,8 +11,13 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MascotaDao {
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertarMascota(mascota: MascotaEntity)
+
+    // Inserción en lote para sincronizar desde Firestore
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertarMascotas(mascotas: List<MascotaEntity>)
 
     @Update
     suspend fun actualizarMascota(mascota: MascotaEntity)
@@ -32,6 +37,15 @@ interface MascotaDao {
     @Query("SELECT * FROM mascotas WHERE id = :mascotaId LIMIT 1")
     fun obtenerMascotaPorId(mascotaId: String): Flow<MascotaEntity?>
 
+    // Todas las mascotas de un tutor (para validaciones de duplicados)
     @Query("SELECT * FROM mascotas WHERE tutorId = :tutorId")
     suspend fun obtenerTodasPorTutorSync(tutorId: String): List<MascotaEntity>
+
+    // Elimina de Room mascotas que ya no existen en la lista remota
+    @Query("DELETE FROM mascotas WHERE tutorId = :tutorId AND id NOT IN (:idsActuales)")
+    suspend fun eliminarMascotasNoPresentes(tutorId: String, idsActuales: List<String>)
+
+    // Borrado total de un tutor si su colección en Firestore quedó vacía
+    @Query("DELETE FROM mascotas WHERE tutorId = :tutorId")
+    suspend fun eliminarTodasPorTutor(tutorId: String)
 }

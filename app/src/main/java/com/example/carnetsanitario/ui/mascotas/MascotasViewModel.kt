@@ -26,6 +26,11 @@ class MascotasViewModel(
     private val _mensajeExito = MutableStateFlow<String?>(null)
     val mensajeExito: StateFlow<String?> = _mensajeExito.asStateFlow()
 
+    init {
+        // Inicia la sincronización en tiempo real desde Firestore hacia Room
+        repository.iniciarSincronizacionMascotas(tutorId, viewModelScope)
+    }
+
     val tutorActual: StateFlow<TutorEntity?> = repository.obtenerTutor(tutorId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
@@ -197,6 +202,9 @@ class MascotasViewModel(
     }
 
     fun cerrarSesion(onLogout: () -> Unit) {
+        repository.detenerSincronizacionMascotas()
+        _mensajeError.value = null
+        _mensajeExito.value = null
         repository.authDataSource.cerrarSesion()
         onLogout()
     }
@@ -204,5 +212,10 @@ class MascotasViewModel(
     fun limpiarMensajes() {
         _mensajeError.value = null
         _mensajeExito.value = null
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        repository.detenerSincronizacionMascotas()
     }
 }

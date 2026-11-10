@@ -7,7 +7,12 @@ import com.example.carnetsanitario.data.local.entity.TutorEntity
 import com.example.carnetsanitario.data.local.entity.VacunaEntity
 import com.example.carnetsanitario.data.remote.FirebaseAuthDataSource
 import com.example.carnetsanitario.data.remote.FirebaseFirestoreDataSource
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
+import java.text.Normalizer
 
 class CarnetRepository(
     private val db: AppDatabase,
@@ -15,7 +20,138 @@ class CarnetRepository(
     private val firestoreDataSource: FirebaseFirestoreDataSource = FirebaseFirestoreDataSource()
 ) {
 
+    private var listenerMascotas: ListenerRegistration? = null
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+
+    // --- SINCRONIZACIÓN EN TIEMPO REAL (FIRESTORE -> ROOM) ---
+
+    fun iniciarSincronizacionMascotas(tutorId: String, scope: CoroutineScope) {
+        listenerMascotas?.remove()
+
+        // 1. SINCRONIZAR TUTOR (Nube -> Room)
+        firestore.collection("tutores").document(tutorId)
+            .addSnapshotListener { doc, error ->
+                if (error != null || doc == null || !doc.exists()) {
+                    android.util.Log.e("CarnetSync", "Error o tutor no encontrado: ${error?.message}")
+                    return@addSnapshotListener
+                }
+
+                try {
+                    val tutor = TutorEntity(
+                        id = doc.getString("id") ?: tutorId,
+                        nombre = doc.getString("nombre") ?: "",
+                        apellido = doc.getString("apellido") ?: "",
+                        rut = doc.getString("rut") ?: "",
+                        correoElectronico = doc.getString("correoElectronico") ?: "",
+                        telefono = doc.getString("telefono") ?: "",
+                        direccion = doc.getString("direccion"),
+                        region = doc.getString("region"),
+                        comuna = doc.getString("comuna")
+                    )
+
+                    scope.launch {
+                        db.tutorDao().insertarOActualizar(tutor)
+                        android.util.Log.d("CarnetSync", "Tutor sincronizado en Room: ${tutor.nombre} ${tutor.apellido}")
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("CarnetSync", "Fallo al procesar tutor: ${e.message}")
+                }
+            }
+
+        // 2. SINCRONIZAR MASCOTAS (Nube -> Room)
+        listenerMascotas = firestore.collection("tutores")
+            .document(tutorId)
+            .collection("mascotas")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    android.util.Log.e("CarnetSync", "Error en snapshot mascotas: ${error.message}")
+                    return@addSnapshotListener
+                }
+                if (snapshot == null) return@addSnapshotListener
+
+                android.util.Log.d("CarnetSync", "Total documentos mascotas recibidos: ${snapshot.size()}")
+
+                val mascotasRemotas = snapshot.documents.mapNotNull { doc ->
+                    try {
+                        val id = doc.getString("id") ?: doc.id
+                        val nombre = doc.getString("nombre") ?: return@mapNotNull null
+
+                        // Enums seguros
+                        val especieStr = doc.getString("especie") ?: ""
+                        val especie = try {
+                            com.example.carnetsanitario.data.local.enums.Especie.valueOf(especieStr)
+                        } catch (_: Exception) {
+                            com.example.carnetsanitario.data.local.enums.Especie.entries.first()
+                        }
+
+                        val sexoStr = doc.getString("sexo") ?: ""
+                        val sexo = try {
+                            com.example.carnetsanitario.data.local.enums.Sexo.valueOf(sexoStr)
+                        } catch (_: Exception) {
+                            com.example.carnetsanitario.data.local.enums.Sexo.entries.first()
+                        }
+
+                        val estadoRepStr = doc.getString("estadoReproductivo") ?: ""
+                        val estadoRep = try {
+                            com.example.carnetsanitario.data.local.enums.EstadoReproductivo.valueOf(estadoRepStr)
+                        } catch (_: Exception) {
+                            com.example.carnetsanitario.data.local.enums.EstadoReproductivo.entries.first()
+                        }
+
+                        // Peso: en Firestore a veces se guarda como Long o Double
+                        val peso = doc.getDouble("peso")
+                            ?: doc.getLong("peso")?.toDouble()
+                            ?: 0.0
+
+                        val activa = doc.getBoolean("activa") ?: true
+                        val esEdadEstimada = doc.getBoolean("esEdadEstimada") ?: false
+
+                        MascotaEntity(
+                            id = id,
+                            tutorId = doc.getString("tutorId") ?: tutorId,
+                            nombre = nombre,
+                            especie = especie,
+                            sexo = sexo,
+                            raza = doc.getString("raza") ?: "",
+                            color = doc.getString("color") ?: "",
+                            fechaNacimiento = doc.getString("fechaNacimiento") ?: "",
+                            esEdadEstimada = esEdadEstimada,
+                            peso = peso,
+                            estadoReproductivo = estadoRep,
+                            numeroMicrochip = doc.getString("numeroMicrochip"),
+                            fotoUri = doc.getString("fotoUri"),
+                            activa = activa
+                        )
+                    } catch (e: Exception) {
+                        android.util.Log.e("CarnetSync", "Error mapeando mascota ${doc.id}: ${e.message}")
+                        null
+                    }
+                }
+
+                scope.launch {
+                    try {
+                        if (mascotasRemotas.isNotEmpty()) {
+                            db.mascotaDao().insertarMascotas(mascotasRemotas)
+                            val idsRemotos = mascotasRemotas.map { it.id }
+                            db.mascotaDao().eliminarMascotasNoPresentes(tutorId, idsRemotos)
+                            android.util.Log.d("CarnetSync", "Insertadas ${mascotasRemotas.size} mascotas en Room")
+                        } else {
+                            db.mascotaDao().eliminarTodasPorTutor(tutorId)
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("CarnetSync", "Error al escribir en Room MascotaDao: ${e.message}")
+                    }
+                }
+            }
+    }
+
+    fun detenerSincronizacionMascotas() {
+        listenerMascotas?.remove()
+        listenerMascotas = null
+    }
+
     // --- GESTIÓN DE TUTOR ---
+
     fun obtenerTutor(tutorId: String): Flow<TutorEntity?> =
         db.tutorDao().obtenerTutorPorId(tutorId)
 
@@ -29,6 +165,7 @@ class CarnetRepository(
     }
 
     // --- GESTIÓN DE MASCOTAS ---
+
     fun obtenerMascotasActivas(tutorId: String): Flow<List<MascotaEntity>> =
         db.mascotaDao().obtenerMascotasActivas(tutorId)
 
@@ -57,6 +194,7 @@ class CarnetRepository(
     }
 
     // --- GESTIÓN DE VACUNAS ---
+
     fun obtenerVacunas(mascotaId: String): Flow<List<VacunaEntity>> =
         db.vacunaDao().obtenerVacunasPorMascota(mascotaId)
 
@@ -75,6 +213,7 @@ class CarnetRepository(
     }
 
     // --- GESTIÓN DE DESPARASITACIONES ---
+
     fun obtenerDesparasitaciones(mascotaId: String): Flow<List<DesparasitacionEntity>> =
         db.desparasitacionDao().obtenerDesparasitacionesPorMascota(mascotaId)
 
@@ -93,6 +232,7 @@ class CarnetRepository(
     }
 
     // --- ACTUALIZACIÓN Y EDICIÓN ---
+
     suspend fun actualizarMascota(mascota: MascotaEntity) {
         db.mascotaDao().actualizarMascota(mascota)
         try {
@@ -102,13 +242,13 @@ class CarnetRepository(
 
     suspend fun verificarNombreExistente(tutorId: String, nombre: String, mascotaIdExcluir: String? = null): Boolean {
         val lista = db.mascotaDao().obtenerTodasPorTutorSync(tutorId)
-        val normalizado = java.text.Normalizer.normalize(nombre.trim(), java.text.Normalizer.Form.NFD)
+        val normalizado = Normalizer.normalize(nombre.trim(), Normalizer.Form.NFD)
             .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
             .lowercase()
 
         return lista.any { m ->
             if (mascotaIdExcluir != null && m.id == mascotaIdExcluir) return@any false
-            val mNormalizado = java.text.Normalizer.normalize(m.nombre.trim(), java.text.Normalizer.Form.NFD)
+            val mNormalizado = Normalizer.normalize(m.nombre.trim(), Normalizer.Form.NFD)
                 .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
                 .lowercase()
             mNormalizado == normalizado
