@@ -56,10 +56,7 @@ class AuthViewModel(
         rut: String,
         correo: String,
         contrasena: String,
-        telefono: String,
-        direccion: String?,
-        region: String?,
-        comuna: String?
+        telefono: String
     ) {
         if (nombre.isBlank() || apellido.isBlank() || rut.isBlank() || correo.isBlank() || contrasena.isBlank() || telefono.isBlank()) {
             _uiState.value = AuthUiState.Error("Por favor completa los campos obligatorios")
@@ -78,9 +75,9 @@ class AuthViewModel(
                         rut = rut.trim(),
                         correoElectronico = correo.trim(),
                         telefono = telefono.trim(),
-                        direccion = direccion?.takeIf { it.isNotBlank() },
-                        region = region?.takeIf { it.isNotBlank() },
-                        comuna = comuna?.takeIf { it.isNotBlank() }
+                        direccion = null,
+                        region = null,
+                        comuna = null
                     )
                     repository.registrarOActualizarTutor(nuevoTutor)
                     _uiState.value = AuthUiState.Autenticado(user.uid)

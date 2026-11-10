@@ -36,9 +36,6 @@ fun AuthScreen(
     var apellido by remember { mutableStateOf("") }
     var rut by remember { mutableStateOf("") }
     var telefono by remember { mutableStateOf("") }
-    var direccion by remember { mutableStateOf("") }
-    var region by remember { mutableStateOf("") }
-    var comuna by remember { mutableStateOf("") }
 
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.Autenticado) {
@@ -134,29 +131,6 @@ fun AuthScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = direccion,
-                    onValueChange = { direccion = it },
-                    label = { Text("Dirección (Opcional)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = region,
-                        onValueChange = { region = it },
-                        label = { Text("Región (Opcional)") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = comuna,
-                        onValueChange = { comuna = it },
-                        label = { Text("Comuna (Opcional)") },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                Spacer(modifier = Modifier.height(10.dp))
             }
 
             OutlinedTextField(
@@ -196,7 +170,7 @@ fun AuthScreen(
                     if (esModoRegistro) {
                         viewModel.registrarTutor(
                             nombre, apellido, rut, correo, contrasena,
-                            telefono, direccion, region, comuna
+                            telefono
                         )
                     } else {
                         viewModel.iniciarSesion(correo, contrasena)
