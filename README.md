@@ -48,7 +48,7 @@
 
    https://drive.google.com/drive/folders/1-WtDXH7NnP1qUyMT4kRIFhrtZd7SSFcx
 
-2. Descargue el archivo "app-release.apk".
+2. Descargue el archivo "app-debug.apk".
 
 3. Transfiera el archivo a un dispositivo Android si fue descargado desde un computador.
 
